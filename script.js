@@ -1,63 +1,54 @@
 function AgeCounter() {
-    var startYear = new Date("2010-06-10");
-    var now = new Date();
-    var years = now.getTime() - startYear.getTime();
-    var age = years / 31557600000;
-    var ageElement = document.getElementById("age");
-    if (ageElement) {
-        ageElement.textContent = "I am " + age.toFixed(9) + " years";
-    }
+  var startYear = new Date("2010-06-10");
+  var now = new Date();
+  var years = now.getTime() - startYear.getTime();
+  var age = years / 31557600000;
+  var ageElement = document.getElementById("age");
+  if (ageElement) {
+    ageElement.textContent = "I am " + age.toFixed(9) + " years old";
+  }
 }
 setInterval(AgeCounter, 50);
 
-const username = 'alexsid0';
-
-async function fetchRepos() {
-  const response = await fetch(`https://api.github.com/users/${username}/repos`);
-  if (!response.ok) {
-    console.error('Failed to fetch repos:', response.status);
-    return [];
-  }
-  const repos = await response.json();
-  return repos;
-}
-
-async function fetchReadme(repoName) {
-  const response = await fetch(
-    `https://api.github.com/repos/${username}/${repoName}/readme`
-  );
-
-  if (!response.ok) return null;
-
-  const data = await response.json();
-  const content = atob(data.content);
-  return content;
-}
+const markdownUrls = [
+  'https://raw.githubusercontent.com/alexsid0/fastengine/main/README.md',
+  'https://raw.githubusercontent.com/alexsid0/perlinnoise/main/README.md'
+];
 
 async function initCarousel() {
-  const repos = await fetchRepos();
   const carouselWrapper = document.getElementById('carousel-wrapper');
 
-  if (repos.length === 0) {
-    carouselWrapper.innerHTML = '<p>No repositories found.</p>';
-    return;
-  }
+  for (const url of markdownUrls) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.warn('Failed to fetch:', url);
+        continue;
+      }
 
-  for (const repo of repos) {
-    const markdown = await fetchReadme(repo.name);
+      const markdown = await response.text();
+      
+      const baseRawUrl = url.substring(0, url.lastIndexOf('/') + 1);
+      const fixedMarkdown = markdown.replace(/!\[(.*?)\]\((?!http)(.*?)\)/g, (match, alt, imgPath) => {
+        const absoluteUrl = baseRawUrl + imgPath;
+        return `![${alt}](${absoluteUrl})`;
+      });
+      const html = marked.parse(fixedMarkdown);
 
-    if (!markdown) continue;
+      const repoNameMatch = url.match(/githubusercontent\.com\/[^\/]+\/([^\/]+)\//);
+      const repoName = repoNameMatch ? repoNameMatch[1] : 'Repository';
 
-    const html = marked.parse(markdown);
+      const slide = document.createElement('div');
+      slide.classList.add('swiper-slide');
+      slide.innerHTML = `
+        <h2>${repoName}</h2>
+        <div>${html}</div>
+      `;
 
-    const slide = document.createElement('div');
-    slide.classList.add('swiper-slide');
-    slide.innerHTML = `
-      <h2>${repo.name}</h2>
-      <div>${html}</div>
-    `;
-
-    carouselWrapper.appendChild(slide);
+      carouselWrapper.appendChild(slide);
+    } catch (error) {
+      console.error('Error loading markdown from', url, error);
+    }
   }
 
   new Swiper('.swiper-container', {
@@ -73,4 +64,5 @@ async function initCarousel() {
   });
 }
 
+// Initialize the carousel
 initCarousel();
