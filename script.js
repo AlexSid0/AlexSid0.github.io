@@ -30,9 +30,12 @@ async function initCarousel() {
       
       const baseRawUrl = url.substring(0, url.lastIndexOf('/') + 1);
       const fixedMarkdown = markdown.replace(/!\[(.*?)\]\((?!http)(.*?)\)/g, (match, alt, imgPath) => {
-        const absoluteUrl = baseRawUrl + imgPath;
+
+        let path = imgPath.startsWith('/') ? imgPath.slice(1) : imgPath;
+        const absoluteUrl = baseRawUrl + path;
         return `![${alt}](${absoluteUrl})`;
       });
+
       const html = marked.parse(fixedMarkdown);
 
       const repoNameMatch = url.match(/githubusercontent\.com\/[^\/]+\/([^\/]+)\//);
